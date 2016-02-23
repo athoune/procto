@@ -37,7 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Sprintf("hsperfdata : %+v", result)
+	fmt.Println(result)
 
 	//interval, err := strconv.Atoi(os.Args[2])
 	//if err != nil {
