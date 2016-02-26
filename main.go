@@ -7,6 +7,7 @@ import (
 	"os"
 	//"strconv"
 	//"time"
+	"path"
 )
 
 func main() {
@@ -33,12 +34,30 @@ func main() {
 	}
 
 	f.Seek(int64(perfData.Prologue.EntryOffset), os.SEEK_SET)
-	result, err := perfData.ReadAllEntry(f)
+	entries, err := perfData.ReadAllEntry(f)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(result)
-
+	capacity := int64(0)
+	used := int64(0)
+	for _, entry := range entries {
+		match, err := path.Match("sun/gc/generation/*/capacity", entry.EntryName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if match {
+			capacity += entry.LongValue
+		}
+		match, err = path.Match("sun/gc/generation/*/space/*/used", entry.EntryName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if match {
+			used += entry.LongValue
+		}
+		//fmt.Println(entry.EntryName, entry.LongValue, entry.StringValue)
+	}
+	fmt.Println(used, capacity, float64(100*(capacity-used))/float64(capacity))
 	//interval, err := strconv.Atoi(os.Args[2])
 	//if err != nil {
 	//log.Fatal(err)
