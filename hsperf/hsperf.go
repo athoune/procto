@@ -6,7 +6,6 @@ import (
 	//"strconv"
 	//"time"
 	"path"
-	"path/filepath"
 )
 
 type HeapData struct {
@@ -16,14 +15,6 @@ type HeapData struct {
 
 type Data struct {
 	Heap HeapData
-}
-
-func FindHSPerfData(user string) (string, error) {
-	paths, err := filepath.Glob(filepath.Join(os.TempDir(), "hsperfdata_"+user, "*"))
-	if err != nil {
-		return "", err
-	}
-	return paths[0], nil
 }
 
 func ReadHsperf(hsPerfDataPath string) (*Data, error) {
