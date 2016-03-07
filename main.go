@@ -24,12 +24,19 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	proc, err := proc.ReadStat(data.Pid)
+	process, err := proc.ReadStat(data.Pid)
+	if err != nil {
+		log.Fatal(err)
+	}
+	threads, err := proc.ReadStatThreadsTime(data.Pid)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Heap used, capacity, ratio : ", hsperfdata.Heap.Used, hsperfdata.Heap.Capacity, float64(100*hsperfdata.Heap.Used)/float64(hsperfdata.Heap.Capacity))
-	fmt.Println("CPU time User System : ", proc.Utime, proc.Stime)
+	fmt.Println("CPU time User System : ", process.Utime, process.Stime)
+	for core, stat := range threads {
+		fmt.Println("\t", core, stat.Utime+stat.Stime)
+	}
 	//interval, err := strconv.Atoi(os.Args[2])
 	//if err != nil {
 	//log.Fatal(err)

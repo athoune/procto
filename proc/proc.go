@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -96,9 +97,8 @@ func procPidStatSplit(line string) []string {
 	return parts
 }
 
-func ReadStat(pid int) (ProcStats, error) {
-
-	lines, err := readFileLines(fmt.Sprintf("/proc/%d/stat", pid))
+func readStatPath(path string) (ProcStats, error) {
+	lines, err := readFileLines(path)
 	// pid could have exited between when we scanned the dir and now
 	if err != nil {
 		return ProcStats{}, nil
@@ -143,6 +143,52 @@ func ReadStat(pid int) (ProcStats, error) {
 		readUInt(parts[43]), // cguest_time
 	}
 	return stat, nil
+}
+
+func ReadStatTask(pid int, task int) (ProcStats, error) {
+	return readStatPath(fmt.Sprintf("/proc/%d/task/%d/stat", pid, task))
+}
+
+func ReadStat(pid int) (ProcStats, error) {
+	return readStatPath(fmt.Sprintf("/proc/%d/stat", pid))
+}
+
+func ReadStatThreads(pid int) ([]ProcStats, error) {
+	d, err := os.Open(fmt.Sprintf("/proc/%d/task", pid))
+	if err != nil {
+		return []ProcStats{}, err
+	}
+	tasks, err := d.Readdirnames(1024)
+	if err != nil {
+		return []ProcStats{}, err
+	}
+	stats := make([]ProcStats, len(tasks))
+	for i, task := range tasks {
+		stats[i], err = readStatPath(fmt.Sprintf("/proc/%d/task/%s/stat", pid, task))
+		if err != nil {
+			return []ProcStats{}, err
+		}
+	}
+	return stats, nil
+}
+
+type TimeStat struct {
+	Utime uint64
+	Stime uint64
+}
+
+func ReadStatThreadsTime(pid int) ([]TimeStat, error) {
+	stats, err := ReadStatThreads(pid)
+	if err != nil {
+		return []TimeStat{}, err
+	}
+	cpt := make([]TimeStat, runtime.NumCPU())
+	for _, stat := range stats {
+		cpt[stat.Processor].Utime += stat.Utime
+		cpt[stat.Processor].Stime += stat.Stime
+
+	}
+	return cpt, nil
 }
 
 // note that this is not thread safe
