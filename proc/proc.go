@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -172,73 +171,15 @@ func ReadStatThreads(pid int) ([]*ProcStats, error) {
 	return stats, nil
 }
 
-type TimeStat struct {
-	Time      time.Time
-	StartTime uint64
-	Utime     uint64
-	Stime     uint64
-}
-
-type TimeStats struct {
-	pid      int
-	Stats    []TimeStat
-	Previous []TimeStat
-}
-
-func NewTimeStats(pid int) (*TimeStats, error) {
-	first, err := ReadStatThreadsTime(pid)
-	if err != nil {
-		return &TimeStats{}, err
-	}
-	return &TimeStats{pid, first, []TimeStat{}}, nil
-}
-
-func (self *TimeStats) Measures() error {
-	now, err := ReadStatThreadsTime(self.pid)
-	if err != nil {
-		return err
-	}
-	self.Previous = self.Stats
-	self.Stats = now
-	return nil
-}
-
-func (self *TimeStats) Ratio() {
-	fmt.Println(self.Previous, self.Stats)
-	//delta := int64(self.Stats[0].Time.Sub(self.Previous[0].Time) / time.Millisecond)
-	for i, stat := range self.Stats {
-		prev := self.Previous[i]
-		fmt.Println("Start diff", stat.StartTime, stat.StartTime-prev.StartTime)
-		u := stat.Utime - prev.Utime
-		s := stat.Stime - prev.Stime
-		fmt.Println(i, "User", u, "System", s)
-	}
-}
-
-func ReadStatThreadsTime(pid int) ([]TimeStat, error) {
-	stats, err := ReadStatThreads(pid)
-	if err != nil {
-		return []TimeStat{}, err
-	}
-	cpt := make([]TimeStat, runtime.NumCPU())
-	for _, stat := range stats {
-		cpt[stat.Processor].Time = stat.CaptureTime
-		cpt[stat.Processor].StartTime = stat.StartTime
-		cpt[stat.Processor].Utime += stat.Utime
-		cpt[stat.Processor].Stime += stat.Stime
-	}
-	return cpt, nil
-}
-
 type TimeStatThreads struct {
 	pid     int
-	threads map[uint64]TimeStat
+	threads map[uint64]*ProcStats
 }
 
 func NewTimeStatThreads(pid int) *TimeStatThreads {
 	t := &TimeStatThreads{}
 	t.pid = pid
-	t.threads = make(map[uint64]TimeStat)
+	t.threads = make(map[uint64]*ProcStats)
 	return t
 }
 
@@ -251,27 +192,23 @@ func (self *TimeStatThreads) Measures() error {
 	return nil
 }
 
-func (self *TimeStatThreads) measures() (map[uint64]TimeStat, error) {
+func (self *TimeStatThreads) measures() (map[uint64]*ProcStats, error) {
 	stats, err := ReadStatThreads(self.pid)
 	if err != nil {
 		return nil, err
 	}
-	threads := make(map[uint64]TimeStat)
+	threads := make(map[uint64]*ProcStats)
 	for _, stat := range stats {
-		t := TimeStat{
-			stat.CaptureTime,
-			stat.StartTime,
-			stat.Utime,
-			stat.Stime,
-		}
-		threads[stat.Pid] = t
+		threads[stat.Pid] = stat
 	}
 	return threads, nil
 }
 
 type TimeStatCalcul struct {
-	User   uint64
-	System uint64
+	User      uint64
+	System    uint64
+	State     string
+	Processor uint64
 }
 
 func (self *TimeStatThreads) MeasuresAndCalculate() (map[uint64]TimeStatCalcul, error) {
@@ -284,13 +221,13 @@ func (self *TimeStatThreads) MeasuresAndCalculate() (map[uint64]TimeStatCalcul, 
 		var u, s uint64
 		if b, ok := self.threads[pid]; ok {
 			//fmt.Println("Found", pid, stat.Utime, b.Utime, "Time", stat.Time, b.Time)
-			d := uint64(stat.Time.Sub(b.Time) / time.Second)
+			d := uint64(stat.CaptureTime.Sub(b.CaptureTime) / time.Second)
 			u = ((stat.Utime - b.Utime) / d)
 			s = ((stat.Stime - b.Stime) / d)
 		} else {
 			fmt.Println("Not found", pid)
 		}
-		c[pid] = TimeStatCalcul{u, s}
+		c[pid] = TimeStatCalcul{u, s, stat.State, stat.Processor}
 	}
 	self.threads = now
 	return c, nil
