@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -211,26 +212,36 @@ type TimeStatCalcul struct {
 	Processor uint64
 }
 
-func (self *TimeStatThreads) MeasuresAndCalculate() (map[uint64]TimeStatCalcul, error) {
+type TimeStatCalulProcessor struct {
+	User   float64
+	System float64
+}
+
+func (self *TimeStatThreads) MeasuresAndCalculate() (map[uint64]TimeStatCalcul, []TimeStatCalulProcessor, error) {
 	now, err := self.measures()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	c := make(map[uint64]TimeStatCalcul)
+	p := make([]TimeStatCalulProcessor, runtime.NumCPU())
 	for pid, stat := range now {
 		var u, s uint64
+		var uu, ss float64
 		if b, ok := self.threads[pid]; ok {
-			//fmt.Println("Found", pid, stat.Utime, b.Utime, "Time", stat.Time, b.Time)
 			d := uint64(stat.CaptureTime.Sub(b.CaptureTime) / time.Second)
-			u = ((stat.Utime - b.Utime) / d)
-			s = ((stat.Stime - b.Stime) / d)
+			u = (stat.Utime - b.Utime) / d
+			s = (stat.Stime - b.Stime) / d
+			uu = float64(stat.Utime-b.Utime) / float64(d)
+			ss = float64(stat.Stime-b.Stime) / float64(d)
 		} else {
 			fmt.Println("Not found", pid)
 		}
 		c[pid] = TimeStatCalcul{u, s, stat.State, stat.Processor}
+		p[stat.Processor].User += uu
+		p[stat.Processor].System += ss
 	}
 	self.threads = now
-	return c, nil
+	return c, p, nil
 }
 
 // note that this is not thread safe

@@ -32,13 +32,14 @@ func main() {
 		log.Fatal(err)
 	}
 	time.Sleep(5 * time.Second)
-	values, err := stats.MeasuresAndCalculate()
+	values, processors, err := stats.MeasuresAndCalculate()
 	if err != nil {
 		log.Fatal(err)
 	}
 	for k, v := range values {
 		fmt.Println(k, v)
 	}
+	fmt.Println("Processors", processors)
 
 	//interval, err := strconv.Atoi(os.Args[2])
 	//if err != nil {
