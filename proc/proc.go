@@ -97,16 +97,16 @@ func procPidStatSplit(line string) []string {
 	return parts
 }
 
-func readStatPath(path string) (ProcStats, error) {
+func readStatPath(path string) (*ProcStats, error) {
 	lines, err := readFileLines(path)
 	// pid could have exited between when we scanned the dir and now
 	if err != nil {
-		return ProcStats{}, nil
+		return &ProcStats{}, nil
 	}
 	// this format of this file is insane because comm can have split chars in it
 	parts := procPidStatSplit(lines[0])
 
-	stat := ProcStats{
+	stat := &ProcStats{
 		time.Now(), // this might be expensive. If so, can cache it. We only need 1ms resolution
 		time.Time{},
 		readUInt(parts[0]),                  // pid
@@ -145,36 +145,74 @@ func readStatPath(path string) (ProcStats, error) {
 	return stat, nil
 }
 
-func ReadStatTask(pid int, task int) (ProcStats, error) {
+func ReadStatTask(pid int, task int) (*ProcStats, error) {
 	return readStatPath(fmt.Sprintf("/proc/%d/task/%d/stat", pid, task))
 }
 
-func ReadStat(pid int) (ProcStats, error) {
+func ReadStat(pid int) (*ProcStats, error) {
 	return readStatPath(fmt.Sprintf("/proc/%d/stat", pid))
 }
 
-func ReadStatThreads(pid int) ([]ProcStats, error) {
+func ReadStatThreads(pid int) ([]*ProcStats, error) {
 	d, err := os.Open(fmt.Sprintf("/proc/%d/task", pid))
 	if err != nil {
-		return []ProcStats{}, err
+		return []*ProcStats{}, err
 	}
 	tasks, err := d.Readdirnames(1024)
 	if err != nil {
-		return []ProcStats{}, err
+		return []*ProcStats{}, err
 	}
-	stats := make([]ProcStats, len(tasks))
+	stats := make([]*ProcStats, len(tasks))
 	for i, task := range tasks {
 		stats[i], err = readStatPath(fmt.Sprintf("/proc/%d/task/%s/stat", pid, task))
 		if err != nil {
-			return []ProcStats{}, err
+			return []*ProcStats{}, err
 		}
 	}
 	return stats, nil
 }
 
 type TimeStat struct {
-	Utime uint64
-	Stime uint64
+	Time      time.Time
+	StartTime uint64
+	Utime     uint64
+	Stime     uint64
+}
+
+type TimeStats struct {
+	pid      int
+	Stats    []TimeStat
+	Previous []TimeStat
+}
+
+func NewTimeStats(pid int) (*TimeStats, error) {
+	first, err := ReadStatThreadsTime(pid)
+	if err != nil {
+		return &TimeStats{}, err
+	}
+	return &TimeStats{pid, first, []TimeStat{}}, nil
+}
+
+func (self *TimeStats) Measures() error {
+	now, err := ReadStatThreadsTime(self.pid)
+	if err != nil {
+		return err
+	}
+	self.Previous = self.Stats
+	self.Stats = now
+	return nil
+}
+
+func (self *TimeStats) Ratio() {
+	fmt.Println(self.Previous, self.Stats)
+	//delta := int64(self.Stats[0].Time.Sub(self.Previous[0].Time) / time.Millisecond)
+	for i, stat := range self.Stats {
+		prev := self.Previous[i]
+		fmt.Println("Start diff", stat.StartTime, stat.StartTime-prev.StartTime)
+		u := stat.Utime - prev.Utime
+		s := stat.Stime - prev.Stime
+		fmt.Println(i, "User", u, "System", s)
+	}
 }
 
 func ReadStatThreadsTime(pid int) ([]TimeStat, error) {
@@ -184,11 +222,78 @@ func ReadStatThreadsTime(pid int) ([]TimeStat, error) {
 	}
 	cpt := make([]TimeStat, runtime.NumCPU())
 	for _, stat := range stats {
+		cpt[stat.Processor].Time = stat.CaptureTime
+		cpt[stat.Processor].StartTime = stat.StartTime
 		cpt[stat.Processor].Utime += stat.Utime
 		cpt[stat.Processor].Stime += stat.Stime
-
 	}
 	return cpt, nil
+}
+
+type TimeStatThreads struct {
+	pid     int
+	threads map[uint64]TimeStat
+}
+
+func NewTimeStatThreads(pid int) *TimeStatThreads {
+	t := &TimeStatThreads{}
+	t.pid = pid
+	t.threads = make(map[uint64]TimeStat)
+	return t
+}
+
+func (self *TimeStatThreads) Measures() error {
+	threads, err := self.measures()
+	if err != nil {
+		return err
+	}
+	self.threads = threads
+	return nil
+}
+
+func (self *TimeStatThreads) measures() (map[uint64]TimeStat, error) {
+	stats, err := ReadStatThreads(self.pid)
+	if err != nil {
+		return nil, err
+	}
+	threads := make(map[uint64]TimeStat)
+	for _, stat := range stats {
+		t := TimeStat{
+			stat.CaptureTime,
+			stat.StartTime,
+			stat.Utime,
+			stat.Stime,
+		}
+		threads[stat.Pid] = t
+	}
+	return threads, nil
+}
+
+type TimeStatCalcul struct {
+	User   uint64
+	System uint64
+}
+
+func (self *TimeStatThreads) MeasuresAndCalculate() (map[uint64]TimeStatCalcul, error) {
+	now, err := self.measures()
+	if err != nil {
+		return nil, err
+	}
+	c := make(map[uint64]TimeStatCalcul)
+	for pid, stat := range now {
+		var u, s uint64
+		if b, ok := self.threads[pid]; ok {
+			//fmt.Println("Found", pid, stat.Utime, b.Utime, "Time", stat.Time, b.Time)
+			d := uint64(stat.Time.Sub(b.Time) / time.Second)
+			u = ((stat.Utime - b.Utime) / d)
+			s = ((stat.Stime - b.Stime) / d)
+		} else {
+			fmt.Println("Not found", pid)
+		}
+		c[pid] = TimeStatCalcul{u, s}
+	}
+	self.threads = now
+	return c, nil
 }
 
 // note that this is not thread safe
