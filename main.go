@@ -7,6 +7,7 @@ import (
 	"time"
 	//"strconv"
 	//"time"
+	"./fd"
 	"./hsperf"
 	"./java"
 	"./proc"
@@ -26,6 +27,17 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("Heap used, capacity, ratio : ", hsperfdata.Heap.Used, hsperfdata.Heap.Capacity, float64(100*hsperfdata.Heap.Used)/float64(hsperfdata.Heap.Capacity))
+
+	f, err := fd.NewFd(data.Pid)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sockets, err := f.CountSockets()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Sockets", sockets)
+
 	stats := proc.NewTimeStatThreads(data.Pid)
 	err = stats.Measures()
 	if err != nil {
