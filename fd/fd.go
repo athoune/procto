@@ -19,6 +19,14 @@ func NewFd(pid int) (fd *Fd, err error) {
 }
 
 func (self *Fd) CountSockets() (int, error) {
+	return self.count("socket:[")
+}
+
+func (self *Fd) CountPipes() (int, error) {
+	return self.count("pipe:[")
+}
+
+func (self *Fd) count(prefix string) (int, error) {
 	d, err := os.Open(fmt.Sprintf("/proc/%d/fd", self.Pid))
 	if err != nil {
 		return 0, err
@@ -30,7 +38,7 @@ func (self *Fd) CountSockets() (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		if strings.HasPrefix(p, "socket:[") {
+		if strings.HasPrefix(p, prefix) {
 			cpt += 1
 		}
 	}

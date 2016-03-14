@@ -37,6 +37,11 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("Sockets", sockets)
+	pipes, err := f.CountPipes()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Pipes", pipes)
 
 	stats := proc.NewTimeStatThreads(data.Pid)
 	err = stats.Measures()
