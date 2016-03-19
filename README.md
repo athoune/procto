@@ -1,11 +1,15 @@
-Hsperf to Carbon
-================
+Procto
+======
 
-Read Java Hot Spot data, and write it to carbon.
+Find info about a process.
+
+ * Find Java process ans dead its hsperf infos
+ * Find stuck threads
+ * Count sockets opened
 
 The hard job is done by the hsbeat project.
 
-Status : ugly POC.
+Status : Cute and experimental POC.
 
 
 Licence
