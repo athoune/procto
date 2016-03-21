@@ -1,6 +1,7 @@
 package fd
 
 import (
+	"../net"
 	"fmt"
 	"os"
 	"strings"
@@ -24,6 +25,26 @@ func (self *Fd) CountSockets() (int, error) {
 
 func (self *Fd) CountPipes() (int, error) {
 	return self.count("pipe:[")
+}
+
+func (self *Fd) Sockets() ([]net.Socket, error) {
+	stat := net.NewStats()
+	inodes := []string{}
+	d, err := os.Open(fmt.Sprintf("/proc/%d/fd", self.Pid))
+	if err != nil {
+		return nil, err
+	}
+	fds, err := d.Readdirnames(0)
+	for _, fd := range fds {
+		p, err := os.Readlink(fmt.Sprintf("/proc/%d/fd/%s", self.Pid, fd))
+		if err != nil {
+			return nil, err
+		}
+		if strings.HasPrefix(p, "socket:[") {
+			inodes = append(inodes, p[8:len(p)-1])
+		}
+	}
+	return stat.FindByInodes(inodes), nil
 }
 
 func (self *Fd) count(prefix string) (int, error) {

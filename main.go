@@ -58,6 +58,13 @@ func main() {
 	}
 	fmt.Println("Processors", processors)
 
+	s, err := f.Sockets()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, socket := range s {
+		fmt.Println("Socket", socket)
+	}
 	//interval, err := strconv.Atoi(os.Args[2])
 	//if err != nil {
 	//log.Fatal(err)
