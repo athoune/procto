@@ -261,7 +261,12 @@ func netstat(t string, sockets *map[string]Socket) {
 			fport = 0
 		}
 
-		state := STATE[line_array[3]]
+		var state string
+		if t != "unix" {
+			state = STATE[line_array[3]]
+		} else {
+			state = STATE[line_array[5]]
+		}
 
 		p := Socket{state, ip, port, fip, fport, t}
 
