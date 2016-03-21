@@ -85,8 +85,10 @@ func getData(t string) []string {
 		proc_t = PROC_TCP6
 	} else if t == "udp6" {
 		proc_t = PROC_UDP6
+	} else if t == "unix" {
+		proc_t = PROC_UNIX
 	} else {
-		fmt.Printf("%s is a invalid type, tcp and udp only!\n", t)
+		fmt.Printf("%s is a invalid type, unix, tcp and udp only!\n", t)
 		os.Exit(1)
 	}
 
@@ -232,21 +234,46 @@ func netstat(t string, sockets *map[string]Socket) {
 
 		// local ip and port
 		line_array := removeEmpty(strings.Split(strings.TrimSpace(line), " "))
-		ip_port := strings.Split(line_array[1], ":")
-		ip := convertIp(ip_port[0])
-		port := hexToDec(ip_port[1])
+		var ip, fip string
+		var port, fport int64
+
+		if t != "unix" {
+			ip_port := strings.Split(line_array[1], ":")
+			ip = convertIp(ip_port[0])
+			port = hexToDec(ip_port[1])
+		} else {
+			fmt.Println("unix line array", line_array)
+			if len(line_array) > 7 {
+				ip = line_array[7]
+			} else {
+				ip = "?"
+			}
+			port = 0
+		}
 
 		// foreign ip and port
-		fip_port := strings.Split(line_array[2], ":")
-		fip := convertIp(fip_port[0])
-		fport := hexToDec(fip_port[1])
+		if t != "unix" {
+			fip_port := strings.Split(line_array[2], ":")
+			fip = convertIp(fip_port[0])
+			fport = hexToDec(fip_port[1])
+		} else {
+			fip = "0"
+			fport = 0
+		}
 
 		state := STATE[line_array[3]]
 
 		p := Socket{state, ip, port, fip, fport, t}
 
+		var inode string
+		if t != "unix" {
+			inode = line_array[9]
+		} else {
+			inode = line_array[6]
+		}
+
 		slice := *sockets
-		slice[line_array[9]] = p
+		slice[inode] = p
 		*sockets = slice
 	}
 }
@@ -286,6 +313,7 @@ func NewStats() *Stats {
 	netstat("tcp6", &sockets)
 	netstat("udp", &sockets)
 	netstat("udp6", &sockets)
+	netstat("unix", &sockets)
 	return &Stats{sockets}
 }
 
