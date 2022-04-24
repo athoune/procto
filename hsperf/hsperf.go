@@ -1,10 +1,10 @@
 package hsperf
 
 import (
-	hsperfdata "github.com/YaSuenag/hsbeat/hsperfdata"
 	"os"
-	//"strconv"
-	//"time"
+
+	hsperfdata "github.com/YaSuenag/hsbeat/module/hotspot/hsperfdata"
+
 	"path"
 )
 

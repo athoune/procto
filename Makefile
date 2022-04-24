@@ -1,3 +1,5 @@
-linux:
-	#docker run -it --rm -v `pwd`:/go golang go get
-	docker run -it --rm -v `pwd`:/go golang:1.6 go build -v -o procto
+build: bin
+	go build -v -o bin/procto
+
+bin:
+	mkdir -p bin

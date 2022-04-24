@@ -1,10 +1,11 @@
 package fd
 
 import (
-	"../net"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/athoune/procto/net"
 )
 
 type Fd struct {

@@ -5,12 +5,11 @@ import (
 	"log"
 	"os"
 	"time"
-	//"strconv"
-	//"time"
-	"./fd"
-	"./hsperf"
-	"./java"
-	"./proc"
+
+	"github.com/athoune/procto/fd"
+	"github.com/athoune/procto/hsperf"
+	"github.com/athoune/procto/java"
+	"github.com/athoune/procto/proc"
 )
 
 func main() {
