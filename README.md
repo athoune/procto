@@ -1,6 +1,8 @@
 Procto
 ======
 
+The main library [hsbeat](https://github.com/YaSuenag/hsbeat) is now archived, then I have to archive this project.
+
 Find info about a process.
 
  * Find Java process ans dead its hsperf infos
