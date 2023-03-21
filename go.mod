@@ -2,9 +2,10 @@ module github.com/athoune/procto
 
 go 1.18
 
+require github.com/YaSuenag/hsbeat v0.2.0
+
 require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/YaSuenag/hsbeat v0.2.0 // indirect
 	github.com/elastic/beats v7.6.2+incompatible // indirect
 	github.com/elastic/go-sysinfo v1.7.1 // indirect
 	github.com/elastic/go-ucfg v0.8.4 // indirect
@@ -16,6 +17,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/procfs v0.0.0-20190425082905-87a4384529e0 // indirect
+	github.com/spf13/cobra v1.6.1 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
